@@ -19,6 +19,13 @@ dependencies {
     implementation(libs.kotlinpoet)
     implementation(libs.kotlinpoet.ksp)
     implementation(libs.ksp.api)
+
+    testImplementation(kotlin("test-junit5"))
+    testImplementation(libs.kotlin.compile.testing.ksp)
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
 
 publishing {

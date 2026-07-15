@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -35,7 +36,11 @@ android {
 }
 
 dependencies {
+    implementation(libs.kotlin.stdlib)
     implementation(libs.androidx.appcompat)
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.networking)
     implementation(project(":generator"))
     ksp(project(":generator"))

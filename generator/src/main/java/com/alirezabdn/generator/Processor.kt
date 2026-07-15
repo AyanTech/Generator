@@ -12,7 +12,6 @@ import com.google.devtools.ksp.validate
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.FunSpec
-import com.squareup.kotlinpoet.LambdaTypeName
 import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.UNIT
@@ -63,27 +62,10 @@ private class Processor(
             ?.value as? String
         val endPoint = configuredEndPoint?.takeIf(String::isNotEmpty) ?: apiName
 
-        val simpleCall = FunSpec.builder("simpleCall$apiName")
-            .receiver(AYAN_API)
-            .apply { if (inputType != null) addParameter("input", inputType) }
-            .addParameter(
-                ParameterSpec.builder("endPoint", String::class)
-                    .defaultValue("%S", endPoint)
-                    .build()
-            )
-            .addParameter(
-                "callback",
-                LambdaTypeName.get(
-                    parameters = outputType
-                        ?.copy(nullable = true)
-                        ?.let { listOf(ParameterSpec.unnamed(it)) }
-                        .orEmpty(),
-                    returnType = UNIT,
-                )
-            )
-            .addStatement("this.simpleCall<%T>(endPoint, %L)", outputType ?: Void::class.asClassName(), inputType?.let { "input" } ?: "null")
-            .addStatement("{ callback(%L) }", if (outputType != null) "it" else "")
-            .build()
+        val responseType = outputType ?: UNIT
+        val resultType = FLOW.parameterizedBy(
+            AYAN_API_RESULT.parameterizedBy(responseType, API_CALL_STATUS, Exception::class.asClassName())
+        )
 
         val call = FunSpec.builder("call$apiName")
             .receiver(AYAN_API)
@@ -94,20 +76,36 @@ private class Processor(
                     .build()
             )
             .addParameter(
-                "callback",
-                LambdaTypeName.get(
-                    receiver = AYAN_API_CALLBACK.parameterizedBy(outputType ?: Void::class.asClassName()),
-                    returnType = UNIT,
-                )
+                ParameterSpec.builder("baseUrl", String::class.asClassName().copy(nullable = true))
+                    .defaultValue("null")
+                    .build()
             )
-            .addStatement("this.call<%T>(endPoint, %L, callback)", outputType ?: Void::class.asClassName(), inputType?.let { "input" } ?: "null")
+            .returns(resultType)
+            .apply {
+                if (inputType != null) {
+                    addStatement(
+                        "return post<%T, %T>(body = input, endPint = endPoint, baseUrl = baseUrl)",
+                        inputType,
+                        responseType,
+                    )
+                } else {
+                    addStatement(
+                        "return post<%T, %T>(body = %T, endPint = endPoint, baseUrl = baseUrl)",
+                        UNIT,
+                        responseType,
+                        UNIT,
+                    )
+                }
+            }
             .build()
 
-        return listOf(simpleCall, call)
+        return listOf(call)
     }
 
     private companion object {
-        val AYAN_API = ClassName("ir.ayantech.ayannetworking.api", "AyanApi")
-        val AYAN_API_CALLBACK = ClassName("ir.ayantech.ayannetworking.api", "AyanApiCallback")
+        val AYAN_API = ClassName("ir.ayantech.ayannetworking.v2", "AyanApi")
+        val AYAN_API_RESULT = ClassName("ir.ayantech.ayannetworking.v2.api", "AyanAPIResult")
+        val API_CALL_STATUS = ClassName("ir.ayantech.ayannetworking.v2.model", "ApiCallStatus")
+        val FLOW = ClassName("kotlinx.coroutines.flow", "Flow")
     }
 }

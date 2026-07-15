@@ -1,20 +1,36 @@
 package com.alirezabdn.generator
 
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
 @AyanAPI
 class GetEndUserInquiryHistoryDetail {
-    data class Input(val InquiryType: String)
+    @Serializable
+    data class Input(
+        @SerialName("InquiryType")
+        val inquiryType: String)
 
+    @Serializable
     data class Output(
-        val InquiryHistory: ArrayList<InquiryModel>,
-        val TotalInquiryHistoryCount: Long
+        @SerialName("InquiryHistory")
+        val inquiryHistory: List<InquiryModel>,
+        @SerialName("TotalInquiryHistoryCount")
+        val totalInquiryHistoryCount: Long
     )
 
+    @Serializable
     data class InquiryModel(
-        val Description: String,
-        val IsFavorite: Boolean,
-        val IsElectronic: Boolean,
-        val ID: Long,
-        val Type: String,
-        val Value: String
+        @SerialName("Description")
+        val description: String,
+        @SerialName("IsFavorite")
+        val isFavorite: Boolean,
+        @SerialName("IsElectronic")
+        val isElectronic: Boolean,
+        @SerialName("ID")
+        val id: Long,
+        @SerialName("Type")
+        val type: String,
+        @SerialName("Value")
+        val value: String
     )
 }
