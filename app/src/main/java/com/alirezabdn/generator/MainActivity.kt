@@ -12,6 +12,14 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        ayanAPI = AyanApi(
+            context = this,
+            getUserToken = {
+                ""
+            },
+            defaultBaseUrl = "https://application.billingsystem.ayantech.ir/WebServices/Core.svc/",
+        )
         ayanAPI.simpleCallOnlyInputApi(OnlyInputApi.Input("test")) { }
         ayanAPI.callOnlyInputApi(OnlyInputApi.Input("test")) {
             success { }
