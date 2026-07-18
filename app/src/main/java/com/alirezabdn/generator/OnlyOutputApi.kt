@@ -5,5 +5,5 @@ import kotlinx.serialization.Serializable
 @AyanAPI
 class OnlyOutputApi {
     @Serializable
-    data class Outputput(val test: String)
+    data class OnlyResponseModel(val test: String)
 }

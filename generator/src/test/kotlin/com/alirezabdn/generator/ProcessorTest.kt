@@ -25,14 +25,14 @@ class ProcessorTest {
 
             @AyanAPI
             class GetProfile {
-                data class Input(val userId: String)
-                data class Output(val displayName: String)
+                data class GetProfileRequestBody(val userId: String)
+                data class GetProfileResponseModel(val displayName: String)
             }
 
             @AyanAPI(endPoint = "CustomEndpoint")
             class UpdateProfile {
-                data class Input(val displayName: String)
-                data class Output(val updated: Boolean)
+                data class UpdateProfileRequestBody(val displayName: String)
+                data class UpdateProfileResponseModel(val updated: Boolean)
             }
             """.trimIndent()
         )
@@ -40,14 +40,14 @@ class ProcessorTest {
         val profile = implementation(compilation, "GetProfile")
         val update = implementation(compilation, "UpdateProfile")
 
-        assertContains(profile, "input: GetProfile.Input")
+        assertContains(profile, "requestBody: GetProfile.GetProfileRequestBody")
         assertContains(
             profile,
-            "Flow<AyanAPIResult<GetProfile.Output, ApiCallStatus, Exception>>",
+            "Flow<AyanAPIResult<GetProfile.GetProfileResponseModel, ApiCallStatus, Exception>>",
         )
         assertContains(
             profile,
-            "ayanApi.post<GetProfile.Input, GetProfile.Output>(body = input, endPint = \"GetProfile\", baseUrl = null)",
+            "ayanApi.post<GetProfile.GetProfileRequestBody, GetProfile.GetProfileResponseModel>(body = requestBody, endPint = \"GetProfile\", baseUrl = null)",
         )
         assertContains(update, "endPint = \"CustomEndpoint\"")
         assertFalse(File(compilation.kspSourcesDir, "kotlin/ir/ayantech/networking/APIs.kt").exists())
@@ -63,19 +63,19 @@ class ProcessorTest {
 
             @AyanAPI
             class NoInput {
-                data class Output(val value: String)
+                data class NoInputResponseModel(val value: String)
             }
 
             @AyanAPI
             class NoOutput {
-                data class Input(val value: String)
+                data class NoOutputRequestBody(val value: String)
             }
             """.trimIndent()
         )
 
         assertContains(
             implementation(compilation, "NoInput"),
-            "ayanApi.post<Unit, NoInput.Output>(body = Unit, endPint = \"NoInput\", baseUrl = null)",
+            "ayanApi.post<Unit, NoInput.NoInputResponseModel>(body = Unit, endPint = \"NoInput\", baseUrl = null)",
         )
         assertContains(
             implementation(compilation, "NoOutput"),
@@ -83,7 +83,7 @@ class ProcessorTest {
         )
         assertContains(
             implementation(compilation, "NoOutput"),
-            "ayanApi.post<NoOutput.Input, Unit>(body = input, endPint = \"NoOutput\", baseUrl = null)",
+            "ayanApi.post<NoOutput.NoOutputRequestBody, Unit>(body = requestBody, endPint = \"NoOutput\", baseUrl = null)",
         )
     }
 
@@ -97,13 +97,13 @@ class ProcessorTest {
 
             @AyanAPI
             class GetProfile {
-                data class Input(val userId: String)
-                data class Output(val displayName: String)
+                data class GetProfileRequestBody(val userId: String)
+                data class GetProfileResponseModel(val displayName: String)
             }
 
             @AyanAPI
             class GetStatus {
-                data class Output(val status: String)
+                data class GetStatusResponseModel(val status: String)
             }
             """.trimIndent()
         )
@@ -122,10 +122,10 @@ class ProcessorTest {
         assertContains(profileInterface, "package ir.ayantech.networking.datasource")
         assertContains(profileInterface, "public interface GetProfileRemoteDataSource")
         assertContains(profileInterface, "public operator fun invoke(")
-        assertContains(profileInterface, "input: GetProfile.Input")
+        assertContains(profileInterface, "requestBody: GetProfile.GetProfileRequestBody")
         assertContains(
             profileInterface,
-            "Flow<AyanAPIResult<GetProfile.Output, ApiCallStatus, Exception>>",
+            "Flow<AyanAPIResult<GetProfile.GetProfileResponseModel, ApiCallStatus, Exception>>",
         )
         assertContains(
             profileImplementation,
@@ -138,8 +138,11 @@ class ProcessorTest {
         assertContains(profileImplementation, "private val ayanApi: AyanApi")
         assertContains(profileImplementation, ": GetProfileRemoteDataSource")
         assertContains(profileImplementation, "override operator fun invoke(")
-        assertContains(profileImplementation, "ayanApi.post<GetProfile.Input, GetProfile.Output>")
-        assertContains(statusImplementation, "ayanApi.post<Unit, GetStatus.Output>")
+        assertContains(
+            profileImplementation,
+            "ayanApi.post<GetProfile.GetProfileRequestBody, GetProfile.GetProfileResponseModel>",
+        )
+        assertContains(statusImplementation, "ayanApi.post<Unit, GetStatus.GetStatusResponseModel>")
     }
 
     private fun implementation(compilation: KotlinCompilation, apiName: String): String =

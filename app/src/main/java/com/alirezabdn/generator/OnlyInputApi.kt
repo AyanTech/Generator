@@ -5,5 +5,5 @@ import kotlinx.serialization.Serializable
 @AyanAPI(endPoint = "DesiredName")
 class OnlyInputApi {
     @Serializable
-    data class Input(val test: String)
+    data class OnlyRequestBody(val test: String)
 }

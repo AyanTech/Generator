@@ -1,8 +1,8 @@
 # Generator
 
-Generator is a Kotlin Symbol Processing (KSP) library that generates type-safe extension functions for [Ayan Networking](https://github.com/AyanTech/Networking) v2 APIs.
+Generator is a Kotlin Symbol Processing (KSP) library that generates remote data source interfaces and implementations based on [Ayan Networking](https://github.com/AyanTech/Networking) v2 APIs.
 
-Describe an API as a class annotated with `@AyanAPI`, add nested `Input` and `Output` models, and Generator creates an `AyanApi.call<ClassName>(...)` function for it at compile time.
+Describe an API as a class annotated with `@AyanAPI`, add nested request and response models, and Generator creates a type-safe remote data source contract and its default implementation at compile time.
 
 ## Requirements
 
@@ -46,7 +46,7 @@ Use a KSP version compatible with the Kotlin version used by your project.
 
 ## Define an API
 
-Annotate a class with `@AyanAPI`. Nested classes whose names end in `Input` and `Output` are used as the request and response types:
+Annotate a class with `@AyanAPI`. Nested classes whose names end in `RequestBody` and `ResponseModel` are used as the request and response types:
 
 ```kotlin
 import com.alirezabdn.generator.AyanAPI
@@ -55,12 +55,12 @@ import kotlinx.serialization.Serializable
 @AyanAPI
 class GetProfile {
     @Serializable
-    data class Input(
+    data class GetProfileRequestBody(
         val userId: String,
     )
 
     @Serializable
-    data class Output(
+    data class GetProfileResponseModel(
         val displayName: String,
     )
 }
@@ -73,16 +73,16 @@ Generator creates a remote data source contract in
 ```kotlin
 interface GetProfileRemoteDataSource {
     operator fun invoke(
-        input: GetProfile.Input,
-    ): Flow<AyanAPIResult<GetProfile.Output, ApiCallStatus, Exception>>
+        requestBody: GetProfile.GetProfileRequestBody,
+    ): Flow<AyanAPIResult<GetProfile.GetProfileResponseModel, ApiCallStatus, Exception>>
 }
 
 class GetProfileRemoteDataSourceImpl(
     private val ayanApi: AyanApi,
 ) : GetProfileRemoteDataSource {
-    override operator fun invoke(input: GetProfile.Input) =
-        ayanApi.post<GetProfile.Input, GetProfile.Output>(
-            body = input,
+    override operator fun invoke(requestBody: GetProfile.GetProfileRequestBody) =
+        ayanApi.post<GetProfile.GetProfileRequestBody, GetProfile.GetProfileResponseModel>(
+            body = requestBody,
             endPint = "GetProfile",
             baseUrl = null,
         )
@@ -97,7 +97,7 @@ The endpoint defaults to the annotated class name. Override it when the server u
 ```kotlin
 @AyanAPI(endPoint = "GetUserProfile")
 class GetProfile {
-    // Input and Output models
+    // Request and response models
 }
 ```
 
@@ -115,7 +115,7 @@ import kotlinx.coroutines.launch
 lifecycleScope.launch {
     val dataSource = GetProfileRemoteDataSourceImpl(ayanApi)
     dataSource(
-        input = GetProfile.Input(userId = "123"),
+        requestBody = GetProfile.GetProfileRequestBody(userId = "123"),
     ).collect { result ->
         result.onSuccess { profile ->
             println(profile.displayName)
@@ -132,32 +132,32 @@ lifecycleScope.launch {
 }
 ```
 
-## APIs without input or output
+## APIs without a request or response
 
 Both nested models are optional.
 
-An API with no input generates a data source method with no `input` parameter:
+An API with no request body generates a data source method with no `requestBody` parameter:
 
 ```kotlin
 @AyanAPI
 class GetStatus {
-    data class Output(val status: String)
+    data class GetStatusResponseModel(val status: String)
 }
 
 val dataSource = GetStatusRemoteDataSourceImpl(ayanApi)
 dataSource.invoke()
 ```
 
-An API with no output returns an `AyanAPIResult` whose response type is `Unit`:
+An API with no response model returns an `AyanAPIResult` whose response type is `Unit`:
 
 ```kotlin
 @AyanAPI
 class SendEvent {
-    data class Input(val name: String)
+    data class SendEventRequestBody(val name: String)
 }
 
 val sendEvent = SendEventRemoteDataSourceImpl(ayanApi)
-sendEvent(SendEvent.Input(name = "opened"))
+sendEvent(SendEvent.SendEventRequestBody(name = "opened"))
 ```
 
 If neither model is present, Generator uses `Unit` for both the request and response.
@@ -168,8 +168,8 @@ If neither model is present, Generator uses `Unit` for both the request and resp
 - Every generated data source exposes an `operator fun invoke` method.
 - Each API generates `<ApiName>RemoteDataSource` and
   `<ApiName>RemoteDataSourceImpl`.
-- The request model is the first nested class whose name ends with `Input`.
-- The response model is the first nested class whose name ends with `Output`.
+- The request model is the first nested class whose name ends with `RequestBody`.
+- The response model is the first nested class whose name ends with `ResponseModel`.
 - Generated interfaces are written to `ir.ayantech.networking.datasource`.
 - Generated implementations are written to `ir.ayantech.networking.datasource.impl`.
 

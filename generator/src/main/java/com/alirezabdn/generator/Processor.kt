@@ -92,13 +92,13 @@ private class Processor(
             .addModifiers(KModifier.OPERATOR)
             .apply { if (abstract) addModifiers(KModifier.ABSTRACT) }
             .apply { if (!abstract) addModifiers(KModifier.OVERRIDE) }
-            .apply { data.inputType?.let { addParameter("input", it) } }
+            .apply { data.requestBodyType?.let { addParameter("requestBody", it) } }
             .returns(data.resultType)
             .apply {
-                if (!abstract && data.inputType != null) {
+                if (!abstract && data.requestBodyType != null) {
                     addStatement(
-                        "return ayanApi.post<%T, %T>(body = input, endPint = %S, baseUrl = null)",
-                        data.inputType,
+                        "return ayanApi.post<%T, %T>(body = requestBody, endPint = %S, baseUrl = null)",
+                        data.requestBodyType,
                         data.responseType,
                         data.endPoint,
                     )
@@ -117,9 +117,11 @@ private class Processor(
     private fun KSClassDeclaration.toDataNeed(): ProcessorDataNeed {
         val nestedClasses =
             this.declarations.filterIsInstance<KSClassDeclaration>().toList()
-        val inputType = nestedClasses.firstOrNull { it.simpleName.asString().endsWith("Input") }
+        val requestBodyType = nestedClasses
+            .firstOrNull { it.simpleName.asString().endsWith("RequestBody") }
             ?.asStarProjectedType()?.toTypeName()
-        val outputType = nestedClasses.firstOrNull { it.simpleName.asString().endsWith("Output") }
+        val responseModelType = nestedClasses
+            .firstOrNull { it.simpleName.asString().endsWith("ResponseModel") }
             ?.asStarProjectedType()?.toTypeName()
         val apiName = this.simpleName.asString()
         val annotation = this.annotations.first {
@@ -130,7 +132,7 @@ private class Processor(
             ?.value as? String
         val endPoint = configuredEndPoint?.takeIf(String::isNotEmpty) ?: apiName
 
-        val responseType = outputType ?: UNIT
+        val responseType = responseModelType ?: UNIT
         val resultType = FLOW.parameterizedBy(
             AYAN_API_RESULT.parameterizedBy(
                 responseType,
@@ -140,7 +142,7 @@ private class Processor(
         )
 
         return ProcessorDataNeed(
-            inputType = inputType,
+            requestBodyType = requestBodyType,
             methodName = "invoke",
             endPoint = endPoint,
             responseType = responseType,
@@ -159,7 +161,7 @@ private class Processor(
     }
 
     private data class ProcessorDataNeed(
-        val inputType: TypeName?,
+        val requestBodyType: TypeName?,
         val methodName: String,
         val endPoint: String,
         val responseType: TypeName,

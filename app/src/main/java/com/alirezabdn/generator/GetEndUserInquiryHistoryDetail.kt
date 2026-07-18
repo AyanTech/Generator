@@ -8,12 +8,12 @@ import kotlinx.serialization.Serializable
 @AyanAPI
 class GetEndUserInquiryHistoryDetail {
     @Serializable
-    data class Input(
+    data class InquiryHistoryRequestBody(
         @SerialName("InquiryType")
         val inquiryType: String)
 
     @Serializable
-    data class Output(
+    data class InquiryHistoryResponseModel(
         @SerialName("InquiryHistory")
         val inquiryHistory: List<InquiryModel>,
         @SerialName("TotalInquiryHistoryCount")
