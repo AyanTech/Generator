@@ -1,3 +1,5 @@
+[![](https://jitpack.io/v/AyanTech/Generator.svg)](https://jitpack.io/#AyanTech/Generator)
+
 # Generator
 
 Generator is a Kotlin Symbol Processing (KSP) library that generates remote data source interfaces and implementations based on [Ayan Networking](https://github.com/AyanTech/Networking) v2 APIs.
