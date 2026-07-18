@@ -35,8 +35,8 @@ plugins {
 }
 
 dependencies {
-    implementation("com.github.AyanTech:Generator:0.3.0")
-    ksp("com.github.AyanTech:Generator:0.3.0")
+    implementation("com.github.AyanTech:Generator:<Generator-version>")
+    ksp("com.github.AyanTech:Generator:<Generator-version>")
 
     implementation("com.github.AyanTech:Networking:<networking-version>")
 }
@@ -66,15 +66,31 @@ class GetProfile {
 }
 ```
 
-Generator creates the following extension in the `ir.ayantech.networking` package:
+Generator creates a remote data source contract in
+`ir.ayantech.networking.datasource` and its default implementation in
+`ir.ayantech.networking.datasource.impl`:
 
 ```kotlin
-fun AyanApi.callGetProfile(
-    input: GetProfile.Input,
-    endPoint: String = "GetProfile",
-    baseUrl: String? = null,
-): Flow<AyanAPIResult<GetProfile.Output, ApiCallStatus, Exception>>
+interface GetProfileRemoteDataSource {
+    operator fun invoke(
+        input: GetProfile.Input,
+    ): Flow<AyanAPIResult<GetProfile.Output, ApiCallStatus, Exception>>
+}
+
+class GetProfileRemoteDataSourceImpl(
+    private val ayanApi: AyanApi,
+) : GetProfileRemoteDataSource {
+    override operator fun invoke(input: GetProfile.Input) =
+        ayanApi.post<GetProfile.Input, GetProfile.Output>(
+            body = input,
+            endPint = "GetProfile",
+            baseUrl = null,
+        )
+}
 ```
+
+The implementation is dependency-injection-framework agnostic, so provide the
+generated class from your DI module or construct it directly.
 
 The endpoint defaults to the annotated class name. Override it when the server uses a different name:
 
@@ -85,19 +101,20 @@ class GetProfile {
 }
 ```
 
-## Call the generated API
+## Call the generated data source
 
-Import the generated function and invoke it on an `AyanApi` instance:
+Construct the generated implementation (or provide it through your DI framework)
+and invoke the data source method:
 
 ```kotlin
-import ir.ayantech.networking.callGetProfile
 import ir.ayantech.ayannetworking.v2.api.onChangeState
 import ir.ayantech.ayannetworking.v2.api.onFailure
 import ir.ayantech.ayannetworking.v2.api.onSuccess
 import kotlinx.coroutines.launch
 
 lifecycleScope.launch {
-    ayanApi.callGetProfile(
+    val dataSource = GetProfileRemoteDataSourceImpl(ayanApi)
+    dataSource(
         input = GetProfile.Input(userId = "123"),
     ).collect { result ->
         result.onSuccess { profile ->
@@ -115,21 +132,11 @@ lifecycleScope.launch {
 }
 ```
 
-You can override the endpoint or base URL for an individual call:
-
-```kotlin
-ayanApi.callGetProfile(
-    input = GetProfile.Input(userId = "123"),
-    endPoint = "Profile/Get",
-    baseUrl = "https://api.example.com/",
-)
-```
-
 ## APIs without input or output
 
 Both nested models are optional.
 
-An API with no input generates a function with no `input` parameter:
+An API with no input generates a data source method with no `input` parameter:
 
 ```kotlin
 @AyanAPI
@@ -137,7 +144,8 @@ class GetStatus {
     data class Output(val status: String)
 }
 
-ayanApi.callGetStatus()
+val dataSource = GetStatusRemoteDataSourceImpl(ayanApi)
+dataSource.invoke()
 ```
 
 An API with no output returns an `AyanAPIResult` whose response type is `Unit`:
@@ -148,7 +156,8 @@ class SendEvent {
     data class Input(val name: String)
 }
 
-ayanApi.callSendEvent(SendEvent.Input(name = "opened"))
+val sendEvent = SendEventRemoteDataSourceImpl(ayanApi)
+sendEvent(SendEvent.Input(name = "opened"))
 ```
 
 If neither model is present, Generator uses `Unit` for both the request and response.
@@ -156,10 +165,13 @@ If neither model is present, Generator uses `Unit` for both the request and resp
 ## Naming rules
 
 - The annotated declaration must be a class.
-- The generated function is named `call` followed by the annotated class name.
+- Every generated data source exposes an `operator fun invoke` method.
+- Each API generates `<ApiName>RemoteDataSource` and
+  `<ApiName>RemoteDataSourceImpl`.
 - The request model is the first nested class whose name ends with `Input`.
 - The response model is the first nested class whose name ends with `Output`.
-- Generated functions are written to `ir.ayantech.networking.APIs`.
+- Generated interfaces are written to `ir.ayantech.networking.datasource`.
+- Generated implementations are written to `ir.ayantech.networking.datasource.impl`.
 
 ## Build and test
 

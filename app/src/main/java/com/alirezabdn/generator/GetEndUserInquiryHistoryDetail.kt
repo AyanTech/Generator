@@ -1,8 +1,10 @@
 package com.alirezabdn.generator
 
+import android.annotation.SuppressLint
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+@SuppressLint("UnsafeOptInUsageError")
 @AyanAPI
 class GetEndUserInquiryHistoryDetail {
     @Serializable
