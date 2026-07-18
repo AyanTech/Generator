@@ -31,9 +31,9 @@ tasks.test {
 publishing {
     publications {
         create<MavenPublication>("mavenJava") {
-            groupId = "com.github.shadowalker77"
+            groupId = "com.github.AyanTech"
             artifactId = "generator"
-            version = "0.3.0"
+            version = "2.0.0"
 
             from(components["java"])
         }
