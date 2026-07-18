@@ -36,6 +36,12 @@ publishing {
             version = "2.0.0"
 
             from(components["java"])
+            pom {
+                name.set("Ayan Gnerator")
+                description.set("Generator is a Kotlin Symbol Processing (KSP) library based on Ayan-Networking")
+                url.set("https://github.com/AyanTech/Generator")
+            }
+
         }
     }
 }
