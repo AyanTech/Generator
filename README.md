@@ -109,9 +109,9 @@ Construct the generated implementation (or provide it through your DI framework)
 and invoke the data source method:
 
 ```kotlin
-import ir.ayantech.ayannetworking.v2.api.onChangeState
-import ir.ayantech.ayannetworking.v2.api.onFailure
-import ir.ayantech.ayannetworking.v2.api.onSuccess
+import ir.ayantech.networking.v2.api.onChangeState
+import ir.ayantech.networking.v2.api.onFailure
+import ir.ayantech.networking.v2.api.onSuccess
 import kotlinx.coroutines.launch
 
 lifecycleScope.launch {
