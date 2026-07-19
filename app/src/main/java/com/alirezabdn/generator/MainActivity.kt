@@ -9,11 +9,11 @@ import androidx.lifecycle.lifecycleScope
 import com.alirezabdn.generator.data.DonationServiceDTO
 import com.alirezabdn.generator.data.RepositoryImpl
 import com.alirezabdn.generator.data.SampleRepository
-import ir.ayantech.ayannetworking.v2.AyanApi
-import ir.ayantech.ayannetworking.v2.api.onChangeState
-import ir.ayantech.ayannetworking.v2.api.onFailure
-import ir.ayantech.ayannetworking.v2.api.onSuccess
-import ir.ayantech.ayannetworking.v2.helpers.Failure
+import ir.ayantech.networking.v2.AyanApi
+import ir.ayantech.networking.v2.api.onChangeState
+import ir.ayantech.networking.v2.api.onFailure
+import ir.ayantech.networking.v2.api.onSuccess
+import ir.ayantech.networking.v2.helpers.Failure
 import ir.ayantech.networking.datasource.DonationServiceDTORemoteDataSource
 import ir.ayantech.networking.datasource.impl.DonationServiceDTORemoteDataSourceImpl
 import kotlinx.coroutines.launch
