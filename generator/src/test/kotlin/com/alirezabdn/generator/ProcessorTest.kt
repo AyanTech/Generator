@@ -47,9 +47,9 @@ class ProcessorTest {
         )
         assertContains(
             profile,
-            "ayanApi.post<GetProfile.GetProfileRequestBody, GetProfile.GetProfileResponseModel>(body = requestBody, endPint = \"GetProfile\", baseUrl = null)",
+            "ayanApi.post<GetProfile.GetProfileRequestBody, GetProfile.GetProfileResponseModel>(body = requestBody, endPoint = \"GetProfile\", baseUrl = null)",
         )
-        assertContains(update, "endPint = \"CustomEndpoint\"")
+        assertContains(update, "endPoint = \"CustomEndpoint\"")
         assertFalse(File(compilation.kspSourcesDir, "kotlin/ir/ayantech/networking/APIs.kt").exists())
     }
 
@@ -75,7 +75,7 @@ class ProcessorTest {
 
         assertContains(
             implementation(compilation, "NoInput"),
-            "ayanApi.post<Unit, NoInput.NoInputResponseModel>(body = Unit, endPint = \"NoInput\", baseUrl = null)",
+            "ayanApi.post<Unit, NoInput.NoInputResponseModel>(body = Unit, endPoint = \"NoInput\", baseUrl = null)",
         )
         assertContains(
             implementation(compilation, "NoOutput"),
@@ -83,7 +83,7 @@ class ProcessorTest {
         )
         assertContains(
             implementation(compilation, "NoOutput"),
-            "ayanApi.post<NoOutput.NoOutputRequestBody, Unit>(body = requestBody, endPint = \"NoOutput\", baseUrl = null)",
+            "ayanApi.post<NoOutput.NoOutputRequestBody, Unit>(body = requestBody, endPoint = \"NoOutput\", baseUrl = null)",
         )
     }
 
@@ -173,16 +173,16 @@ class ProcessorTest {
     private companion object {
         val AYAN_API_STUB =
             """
-            package ir.ayantech.ayannetworking.v2
+            package ir.ayantech.networking.v2
 
-            import ir.ayantech.ayannetworking.v2.api.AyanAPIResult
-            import ir.ayantech.ayannetworking.v2.model.ApiCallStatus
+            import ir.ayantech.networking.v2.api.AyanAPIResult
+            import ir.ayantech.networking.v2.model.ApiCallStatus
             import kotlinx.coroutines.flow.Flow
 
             class AyanApi {
                 inline fun <reified Body, reified Response> post(
                     body: Body,
-                    endPint: String,
+                    endPoint: String,
                     baseUrl: String? = null,
                 ): Flow<AyanAPIResult<Response, ApiCallStatus, Exception>> = error("stub")
             }
@@ -190,14 +190,14 @@ class ProcessorTest {
 
         val AYAN_API_RESULT_STUB =
             """
-            package ir.ayantech.ayannetworking.v2.api
+            package ir.ayantech.networking.v2.api
 
             class AyanAPIResult<T, J, K>
             """.trimIndent()
 
         val API_CALL_STATUS_STUB =
             """
-            package ir.ayantech.ayannetworking.v2.model
+            package ir.ayantech.networking.v2.model
 
             enum class ApiCallStatus { IDLE }
             """.trimIndent()

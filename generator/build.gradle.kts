@@ -33,7 +33,7 @@ publishing {
         create<MavenPublication>("mavenJava") {
             groupId = "com.github.AyanTech"
             artifactId = "generator"
-            version = "2.0.0"
+            version = "2.0.1"
 
             from(components["java"])
             pom {
