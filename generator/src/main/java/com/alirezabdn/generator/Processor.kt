@@ -97,14 +97,14 @@ private class Processor(
             .apply {
                 if (!abstract && data.requestBodyType != null) {
                     addStatement(
-                        "return ayanApi.post<%T, %T>(body = requestBody, endPint = %S, baseUrl = null)",
+                        "return ayanApi.post<%T, %T>(body = requestBody, endPoint = %S, baseUrl = null)",
                         data.requestBodyType,
                         data.responseType,
                         data.endPoint,
                     )
                 } else if (!abstract) {
                     addStatement(
-                        "return ayanApi.post<%T, %T>(body = %T, endPint = %S, baseUrl = null)",
+                        "return ayanApi.post<%T, %T>(body = %T, endPoint = %S, baseUrl = null)",
                         UNIT,
                         data.responseType,
                         UNIT,
@@ -154,9 +154,9 @@ private class Processor(
         const val REMOTE_DATA_SOURCE_INTERFACE_PACKAGE = "ir.ayantech.networking.datasource"
         const val REMOTE_DATA_SOURCE_IMPLEMENTATION_PACKAGE =
             "$REMOTE_DATA_SOURCE_INTERFACE_PACKAGE.impl"
-        val AYAN_API = ClassName("ir.ayantech.ayannetworking.v2", "AyanApi")
-        val AYAN_API_RESULT = ClassName("ir.ayantech.ayannetworking.v2.api", "AyanAPIResult")
-        val API_CALL_STATUS = ClassName("ir.ayantech.ayannetworking.v2.model", "ApiCallStatus")
+        val AYAN_API = ClassName("ir.ayantech.networking.v2", "AyanApi")
+        val AYAN_API_RESULT = ClassName("ir.ayantech.networking.v2.api", "AyanAPIResult")
+        val API_CALL_STATUS = ClassName("ir.ayantech.networking.v2.model", "ApiCallStatus")
         val FLOW = ClassName("kotlinx.coroutines.flow", "Flow")
     }
 
