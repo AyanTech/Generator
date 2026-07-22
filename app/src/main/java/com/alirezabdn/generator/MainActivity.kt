@@ -7,15 +7,15 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.alirezabdn.generator.data.DonationServiceDTO
-import com.alirezabdn.generator.data.RepositoryImpl
-import com.alirezabdn.generator.data.SampleRepository
 import ir.ayantech.networking.v2.AyanApi
 import ir.ayantech.networking.v2.api.onChangeState
 import ir.ayantech.networking.v2.api.onFailure
 import ir.ayantech.networking.v2.api.onSuccess
 import ir.ayantech.networking.v2.helpers.Failure
-import ir.ayantech.networking.datasource.DonationServiceDTORemoteDataSource
-import ir.ayantech.networking.datasource.impl.DonationServiceDTORemoteDataSourceImpl
+import ir.ayantech.networking.datasource.DonationRemoteDataSource
+import ir.ayantech.networking.datasource.impl.DonationRemoteDataSourceImpl
+import ir.ayantech.networking.repository.DonationRepository
+import ir.ayantech.networking.repository.impl.DonationRepositoryImpl
 import kotlinx.coroutines.launch
 
 const val TAG = "TAG_GENERATOR"
@@ -35,12 +35,12 @@ class MainActivity : AppCompatActivity() {
             .build()
     }
 
-    private val sampleRepository: SampleRepository by lazy {
-        val remoteSource: DonationServiceDTORemoteDataSource =
-            DonationServiceDTORemoteDataSourceImpl(
+    private val sampleRepository: DonationRepository by lazy {
+        val remoteSource: DonationRemoteDataSource =
+            DonationRemoteDataSourceImpl(
                 ayanApi = ayanAPI
             )
-        RepositoryImpl(donationServiceDTORemoteDataSource = remoteSource)
+        DonationRepositoryImpl(remoteDataSource = remoteSource)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -51,10 +51,10 @@ class MainActivity : AppCompatActivity() {
         val btn = findViewById<Button>(R.id.btn_fetch)
 
         fun sample() {
-            txt.text = "Loading..."
+            txt.text = getString(R.string.loading)
             lifecycleScope.launch {
                 val requestBody = DonationServiceDTO.GetDonationRequestBody(id = "abc")
-                sampleRepository.fetchDonation(data = requestBody).collect { ayanResult ->
+                sampleRepository.getDonationReferrerTypes(requestBody = requestBody).collect { ayanResult ->
                     ayanResult.onSuccess { successResponse ->
 
                         txt.text = buildString {

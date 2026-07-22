@@ -16,20 +16,28 @@ import org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi
 class ProcessorTest {
 
     @Test
-    fun `generates typed data sources with default and configured endpoints`() {
+    fun `uses annotation endpoint and method name in data source and repository`() {
         val compilation = compileProject(
             """
             package test
 
             import com.alirezabdn.generator.AyanAPI
 
-            @AyanAPI
+            @AyanAPI(
+                endpoint = "",
+                methodImplName = "getProfile",
+                separationCategory = "Profile",
+            )
             class GetProfile {
                 data class GetProfileRequestBody(val userId: String)
                 data class GetProfileResponseModel(val displayName: String)
             }
 
-            @AyanAPI(endPoint = "CustomEndpoint")
+            @AyanAPI(
+                endpoint = "CustomEndpoint",
+                methodImplName = "updateProfile",
+                separationCategory = "Profile",
+            )
             class UpdateProfile {
                 data class UpdateProfileRequestBody(val displayName: String)
                 data class UpdateProfileResponseModel(val updated: Boolean)
@@ -37,19 +45,30 @@ class ProcessorTest {
             """.trimIndent()
         )
 
-        val profile = implementation(compilation, "GetProfile")
-        val update = implementation(compilation, "UpdateProfile")
+        val implementation = remoteDataSourceImplementation(compilation, "Profile")
+        val repositoryImplementation = repositoryImplementation(compilation, "Profile")
 
-        assertContains(profile, "requestBody: GetProfile.GetProfileRequestBody")
+        assertContains(implementation, "override fun getProfile(")
+        assertContains(implementation, "override fun updateProfile(")
+        assertContains(implementation, "requestBody: GetProfile.GetProfileRequestBody")
         assertContains(
-            profile,
+            implementation,
             "Flow<AyanAPIResult<GetProfile.GetProfileResponseModel, ApiCallStatus, Exception>>",
         )
         assertContains(
-            profile,
-            "ayanApi.post<GetProfile.GetProfileRequestBody, GetProfile.GetProfileResponseModel>(body = requestBody, endPoint = \"GetProfile\", baseUrl = null)",
+            implementation,
+            "ayanApi.post<GetProfile.GetProfileRequestBody, GetProfile.GetProfileResponseModel>(body = requestBody, endPoint = \"GetProfile\", baseUrl = baseUrl)",
         )
-        assertContains(update, "endPoint = \"CustomEndpoint\"")
+        assertContains(implementation, "endPoint = \"CustomEndpoint\"")
+        assertContains(repositoryImplementation, "private val remoteDataSource: ProfileRemoteDataSource")
+        assertContains(
+            repositoryImplementation,
+            "= remoteDataSource.getProfile(requestBody = requestBody, baseUrl = baseUrl)",
+        )
+        assertContains(
+            repositoryImplementation,
+            "= remoteDataSource.updateProfile(requestBody = requestBody, baseUrl = baseUrl)",
+        )
         assertFalse(File(compilation.kspSourcesDir, "kotlin/ir/ayantech/networking/APIs.kt").exists())
     }
 
@@ -61,12 +80,20 @@ class ProcessorTest {
 
             import com.alirezabdn.generator.AyanAPI
 
-            @AyanAPI
+            @AyanAPI(
+                endpoint = "NoInput",
+                methodImplName = "getNoInput",
+                separationCategory = "Utility",
+            )
             class NoInput {
                 data class NoInputResponseModel(val value: String)
             }
 
-            @AyanAPI
+            @AyanAPI(
+                endpoint = "NoOutput",
+                methodImplName = "sendNoOutput",
+                separationCategory = "Utility",
+            )
             class NoOutput {
                 data class NoOutputRequestBody(val value: String)
             }
@@ -74,88 +101,180 @@ class ProcessorTest {
         )
 
         assertContains(
-            implementation(compilation, "NoInput"),
-            "ayanApi.post<Unit, NoInput.NoInputResponseModel>(body = Unit, endPoint = \"NoInput\", baseUrl = null)",
+            remoteDataSourceImplementation(compilation, "Utility"),
+            "ayanApi.post<Unit, NoInput.NoInputResponseModel>(body = Unit, endPoint = \"NoInput\", baseUrl = baseUrl)",
         )
         assertContains(
-            implementation(compilation, "NoOutput"),
+            remoteDataSourceImplementation(compilation, "Utility"),
             "Flow<AyanAPIResult<Unit, ApiCallStatus, Exception>>",
         )
         assertContains(
-            implementation(compilation, "NoOutput"),
-            "ayanApi.post<NoOutput.NoOutputRequestBody, Unit>(body = requestBody, endPoint = \"NoOutput\", baseUrl = null)",
+            remoteDataSourceImplementation(compilation, "Utility"),
+            "ayanApi.post<NoOutput.NoOutputRequestBody, Unit>(body = requestBody, endPoint = \"NoOutput\", baseUrl = baseUrl)",
+        )
+        assertContains(
+            repositoryImplementation(compilation, "Utility"),
+            "= remoteDataSource.getNoInput(baseUrl = baseUrl)",
         )
     }
 
     @Test
-    fun `generates a remote data source interface and implementation for every API`() {
+    fun `generates a data source and repository pair for every separation category`() {
         val compilation = compileProject(
             """
             package test
 
             import com.alirezabdn.generator.AyanAPI
 
-            @AyanAPI
+            @AyanAPI(
+                endpoint = "GetProfile",
+                methodImplName = "getProfile",
+                separationCategory = "Profile",
+            )
             class GetProfile {
                 data class GetProfileRequestBody(val userId: String)
                 data class GetProfileResponseModel(val displayName: String)
             }
+            """.trimIndent(),
+            """
+            package test
 
-            @AyanAPI
+            import com.alirezabdn.generator.AyanAPI
+
+            @AyanAPI(
+                endpoint = "GetStatus",
+                methodImplName = "getStatus",
+                separationCategory = "Status",
+            )
             class GetStatus {
                 data class GetStatusResponseModel(val status: String)
+            }
+            """.trimIndent(),
+            """
+            package test
+
+            import com.alirezabdn.generator.AyanAPI
+
+            @AyanAPI(
+                endpoint = "UpdateProfile",
+                methodImplName = "updateProfile",
+                separationCategory = "Profile",
+            )
+            class UpdateProfile {
+                data class UpdateProfileRequestBody(val name: String)
+                data class UpdateProfileResponseModel(val updated: Boolean)
+            }
+
+            @AyanAPI(
+                endpoint = "SubmitPayment",
+                methodImplName = "submitPayment",
+                separationCategory = "Payment",
+            )
+            class SubmitPayment {
+                data class SubmitPaymentRequestBody(val amount: Long)
+                data class SubmitPaymentResponseModel(val accepted: Boolean)
             }
             """.trimIndent()
         )
 
-        val interfaceDirectory = File(
+        val dataSourceDirectory = File(
             compilation.kspSourcesDir,
             "kotlin/ir/ayantech/networking/datasource",
         )
-        val implementationDirectory = File(interfaceDirectory, "impl")
-        val profileInterface = File(interfaceDirectory, "GetProfileRemoteDataSource.kt").readText()
-        val profileImplementation =
-            File(implementationDirectory, "GetProfileRemoteDataSourceImpl.kt").readText()
-        val statusImplementation =
-            File(implementationDirectory, "GetStatusRemoteDataSourceImpl.kt").readText()
+        val repositoryDirectory = File(
+            compilation.kspSourcesDir,
+            "kotlin/ir/ayantech/networking/repository",
+        )
+        val profileDataSource = File(dataSourceDirectory, "ProfileRemoteDataSource.kt").readText()
+        val profileDataSourceImpl =
+            File(dataSourceDirectory, "impl/ProfileRemoteDataSourceImpl.kt").readText()
+        val profileRepository = File(repositoryDirectory, "ProfileRepository.kt").readText()
+        val profileRepositoryImpl =
+            File(repositoryDirectory, "impl/ProfileRepositoryImpl.kt").readText()
 
-        assertContains(profileInterface, "package ir.ayantech.networking.datasource")
-        assertContains(profileInterface, "public interface GetProfileRemoteDataSource")
-        assertContains(profileInterface, "public operator fun invoke(")
-        assertContains(profileInterface, "requestBody: GetProfile.GetProfileRequestBody")
+        assertEquals(
+            listOf(
+                "PaymentRemoteDataSource.kt",
+                "ProfileRemoteDataSource.kt",
+                "StatusRemoteDataSource.kt",
+            ),
+            dataSourceDirectory.kotlinFileNames(),
+        )
+        assertEquals(
+            listOf(
+                "PaymentRemoteDataSourceImpl.kt",
+                "ProfileRemoteDataSourceImpl.kt",
+                "StatusRemoteDataSourceImpl.kt",
+            ),
+            File(dataSourceDirectory, "impl").kotlinFileNames(),
+        )
+        assertEquals(
+            listOf("PaymentRepository.kt", "ProfileRepository.kt", "StatusRepository.kt"),
+            repositoryDirectory.kotlinFileNames(),
+        )
+        assertEquals(
+            listOf("PaymentRepositoryImpl.kt", "ProfileRepositoryImpl.kt", "StatusRepositoryImpl.kt"),
+            File(repositoryDirectory, "impl").kotlinFileNames(),
+        )
+        assertContains(profileDataSource, "public interface ProfileRemoteDataSource")
+        assertContains(profileDataSource, "public fun getProfile(")
+        assertContains(profileDataSource, "public fun updateProfile(")
+        assertContains(profileDataSource, "baseUrl: String? = null")
         assertContains(
-            profileInterface,
+            profileDataSource,
             "Flow<AyanAPIResult<GetProfile.GetProfileResponseModel, ApiCallStatus, Exception>>",
         )
+        assertContains(profileDataSourceImpl, "public class ProfileRemoteDataSourceImpl(")
+        assertContains(profileDataSourceImpl, ": ProfileRemoteDataSource")
+        assertContains(profileDataSourceImpl, "override fun getProfile(")
+        assertContains(profileDataSourceImpl, "override fun updateProfile(")
+        assertContains(profileRepository, "public interface ProfileRepository")
+        assertContains(profileRepository, "public fun getProfile(")
+        assertContains(profileRepository, "public fun updateProfile(")
+        assertContains(profileRepository, "baseUrl: String? = null")
+        assertContains(profileRepositoryImpl, "public class ProfileRepositoryImpl(")
+        assertContains(profileRepositoryImpl, ": ProfileRepository")
         assertContains(
-            profileImplementation,
-            "package ir.ayantech.networking.datasource.`impl`",
+            profileRepositoryImpl,
+            "= remoteDataSource.getProfile(requestBody = requestBody, baseUrl = baseUrl)",
         )
         assertContains(
-            profileImplementation,
-            "public class GetProfileRemoteDataSourceImpl(",
+            profileRepositoryImpl,
+            "= remoteDataSource.updateProfile(requestBody = requestBody, baseUrl = baseUrl)",
         )
-        assertContains(profileImplementation, "private val ayanApi: AyanApi")
-        assertContains(profileImplementation, ": GetProfileRemoteDataSource")
-        assertContains(profileImplementation, "override operator fun invoke(")
-        assertContains(
-            profileImplementation,
-            "ayanApi.post<GetProfile.GetProfileRequestBody, GetProfile.GetProfileResponseModel>",
-        )
-        assertContains(statusImplementation, "ayanApi.post<Unit, GetStatus.GetStatusResponseModel>")
     }
 
-    private fun implementation(compilation: KotlinCompilation, apiName: String): String =
+    private fun remoteDataSourceImplementation(
+        compilation: KotlinCompilation,
+        category: String,
+    ): String =
         File(
             compilation.kspSourcesDir,
-            "kotlin/ir/ayantech/networking/datasource/impl/${apiName}RemoteDataSourceImpl.kt",
+            "kotlin/ir/ayantech/networking/datasource/impl/${category}RemoteDataSourceImpl.kt",
         ).readText()
 
-    private fun compileProject(apiSource: String): KotlinCompilation {
+    private fun repositoryImplementation(
+        compilation: KotlinCompilation,
+        category: String,
+    ): String =
+        File(
+            compilation.kspSourcesDir,
+            "kotlin/ir/ayantech/networking/repository/impl/${category}RepositoryImpl.kt",
+        ).readText()
+
+    private fun File.kotlinFileNames(): List<String> =
+        listFiles()
+            .orEmpty()
+            .filter { it.extension == "kt" }
+            .map(File::getName)
+            .sorted()
+
+    private fun compileProject(vararg apiSources: String): KotlinCompilation {
         val compilation = KotlinCompilation().apply {
             useKsp2()
-            sources = listOf(
-                SourceFile.kotlin("TestApi.kt", apiSource),
+            sources = apiSources.mapIndexed { index, source ->
+                SourceFile.kotlin("TestApi$index.kt", source)
+            } + listOf(
                 SourceFile.kotlin("AyanApiStub.kt", AYAN_API_STUB),
                 SourceFile.kotlin("AyanApiResultStub.kt", AYAN_API_RESULT_STUB),
                 SourceFile.kotlin("ApiCallStatusStub.kt", API_CALL_STATUS_STUB),

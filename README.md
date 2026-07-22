@@ -2,9 +2,9 @@
 
 # Generator
 
-Generator is a Kotlin Symbol Processing (KSP) library that generates remote data source interfaces and implementations based on [Ayan Networking](https://github.com/AyanTech/Networking) v2 APIs.
+Generator is a Kotlin Symbol Processing (KSP) library that generates category-based remote data source and repository interfaces, along with their default implementations, for [Ayan Networking](https://github.com/AyanTech/Networking) v2 APIs.
 
-Describe an API as a class annotated with `@AyanAPI`, add nested request and response models, and Generator creates a type-safe remote data source contract and its default implementation at compile time.
+Describe APIs as classes annotated with `@AyanAPI` and add nested request and response models. Generator groups APIs by category and creates a remote data source and repository pair for every category at compile time.
 
 ## Requirements
 
@@ -54,7 +54,11 @@ Annotate a class with `@AyanAPI`. Nested classes whose names end in `RequestBody
 import com.alirezabdn.generator.AyanAPI
 import kotlinx.serialization.Serializable
 
-@AyanAPI
+@AyanAPI(
+    endpoint = "GetUserProfile",
+    methodImplName = "getProfile",
+    separationCategory = "Profile",
+)
 class GetProfile {
     @Serializable
     data class GetProfileRequestBody(
@@ -68,45 +72,70 @@ class GetProfile {
 }
 ```
 
-Generator creates a remote data source contract in
-`ir.ayantech.networking.datasource` and its default implementation in
-`ir.ayantech.networking.datasource.impl`:
+The annotation values control generation:
+
+- `endpoint` is sent to `AyanApi.post`.
+- `methodImplName` is used for the generated data source and repository method.
+- `separationCategory` groups related APIs and provides the generated type prefix.
+
+For the `Profile` category, Generator creates these four types:
+
+- `ProfileRemoteDataSource`
+- `ProfileRemoteDataSourceImpl`
+- `ProfileRepository`
+- `ProfileRepositoryImpl`
+
+All APIs with `separationCategory = "Profile"` contribute methods to those same four types:
 
 ```kotlin
-interface GetProfileRemoteDataSource {
-    operator fun invoke(
+interface ProfileRemoteDataSource {
+    fun getProfile(
         requestBody: GetProfile.GetProfileRequestBody,
+        baseUrl: String? = null,
     ): Flow<AyanAPIResult<GetProfile.GetProfileResponseModel, ApiCallStatus, Exception>>
 }
 
-class GetProfileRemoteDataSourceImpl(
+class ProfileRemoteDataSourceImpl(
     private val ayanApi: AyanApi,
-) : GetProfileRemoteDataSource {
-    override operator fun invoke(requestBody: GetProfile.GetProfileRequestBody) =
+) : ProfileRemoteDataSource {
+    override fun getProfile(
+        requestBody: GetProfile.GetProfileRequestBody,
+        baseUrl: String?,
+    ) =
         ayanApi.post<GetProfile.GetProfileRequestBody, GetProfile.GetProfileResponseModel>(
             body = requestBody,
-            endPint = "GetProfile",
-            baseUrl = null,
+            endPoint = "GetUserProfile",
+            baseUrl = baseUrl,
         )
 }
-```
 
-The implementation is dependency-injection-framework agnostic, so provide the
-generated class from your DI module or construct it directly.
+interface ProfileRepository {
+    fun getProfile(
+        requestBody: GetProfile.GetProfileRequestBody,
+        baseUrl: String? = null,
+    ): Flow<AyanAPIResult<GetProfile.GetProfileResponseModel, ApiCallStatus, Exception>>
+}
 
-The endpoint defaults to the annotated class name. Override it when the server uses a different name:
-
-```kotlin
-@AyanAPI(endPoint = "GetUserProfile")
-class GetProfile {
-    // Request and response models
+class ProfileRepositoryImpl(
+    private val remoteDataSource: ProfileRemoteDataSource,
+) : ProfileRepository {
+    override fun getProfile(
+        requestBody: GetProfile.GetProfileRequestBody,
+        baseUrl: String?,
+    ) = remoteDataSource.getProfile(requestBody, baseUrl)
 }
 ```
 
-## Call the generated data source
+The implementations are dependency-injection-framework agnostic. Provide the
+generated remote data source and repository implementations from your DI module,
+or construct them directly.
 
-Construct the generated implementation (or provide it through your DI framework)
-and invoke the data source method:
+Every generated method accepts `baseUrl: String? = null`. Omit it to use the
+`AyanApi` configuration, or provide a URL to override the base URL for that call.
+
+## Call the generated repository
+
+Construct the generated implementations or provide them through your DI framework:
 
 ```kotlin
 import ir.ayantech.networking.v2.api.onChangeState
@@ -115,8 +144,9 @@ import ir.ayantech.networking.v2.api.onSuccess
 import kotlinx.coroutines.launch
 
 lifecycleScope.launch {
-    val dataSource = GetProfileRemoteDataSourceImpl(ayanApi)
-    dataSource(
+    val remoteDataSource = ProfileRemoteDataSourceImpl(ayanApi)
+    val repository = ProfileRepositoryImpl(remoteDataSource)
+    repository.getProfile(
         requestBody = GetProfile.GetProfileRequestBody(userId = "123"),
     ).collect { result ->
         result.onSuccess { profile ->
@@ -141,25 +171,33 @@ Both nested models are optional.
 An API with no request body generates a data source method with no `requestBody` parameter:
 
 ```kotlin
-@AyanAPI
+@AyanAPI(
+    endpoint = "GetStatus",
+    methodImplName = "getStatus",
+    separationCategory = "Status",
+)
 class GetStatus {
     data class GetStatusResponseModel(val status: String)
 }
 
-val dataSource = GetStatusRemoteDataSourceImpl(ayanApi)
-dataSource.invoke()
+val repository = StatusRepositoryImpl(StatusRemoteDataSourceImpl(ayanApi))
+repository.getStatus()
 ```
 
 An API with no response model returns an `AyanAPIResult` whose response type is `Unit`:
 
 ```kotlin
-@AyanAPI
+@AyanAPI(
+    endpoint = "SendEvent",
+    methodImplName = "sendEvent",
+    separationCategory = "Event",
+)
 class SendEvent {
     data class SendEventRequestBody(val name: String)
 }
 
-val sendEvent = SendEventRemoteDataSourceImpl(ayanApi)
-sendEvent(SendEvent.SendEventRequestBody(name = "opened"))
+val repository = EventRepositoryImpl(EventRemoteDataSourceImpl(ayanApi))
+repository.sendEvent(SendEvent.SendEventRequestBody(name = "opened"))
 ```
 
 If neither model is present, Generator uses `Unit` for both the request and response.
@@ -167,13 +205,17 @@ If neither model is present, Generator uses `Unit` for both the request and resp
 ## Naming rules
 
 - The annotated declaration must be a class.
-- Every generated data source exposes an `operator fun invoke` method.
-- Each API generates `<ApiName>RemoteDataSource` and
-  `<ApiName>RemoteDataSourceImpl`.
+- `methodImplName` must be a valid Kotlin function name and should be unique within its category.
+- The first character of `separationCategory` is capitalized and used as the type prefix.
+- Every distinct category generates `<Category>RemoteDataSource`,
+  `<Category>RemoteDataSourceImpl`, `<Category>Repository`, and
+  `<Category>RepositoryImpl`.
 - The request model is the first nested class whose name ends with `RequestBody`.
 - The response model is the first nested class whose name ends with `ResponseModel`.
-- Generated interfaces are written to `ir.ayantech.networking.datasource`.
-- Generated implementations are written to `ir.ayantech.networking.datasource.impl`.
+- Data source interfaces and implementations are written to
+  `ir.ayantech.networking.datasource` and `ir.ayantech.networking.datasource.impl`.
+- Repository interfaces and implementations are written to
+  `ir.ayantech.networking.repository` and `ir.ayantech.networking.repository.impl`.
 
 ## Build and test
 
