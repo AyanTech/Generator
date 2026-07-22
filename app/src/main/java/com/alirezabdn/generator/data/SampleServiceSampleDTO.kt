@@ -7,11 +7,12 @@ import kotlinx.serialization.Serializable
 
 @SuppressLint("UnsafeOptInUsageError")
 @AyanAPI(
-    endpoint = "DonationServiceGerReferrerTypeList",
-    methodImplName = "getDonationReferrerTypes",
+    endpoint = "DonationServiceGerReferrerTypeList?test=true",
+    methodImplName = "getSampleDonationReferrerTypes",
     separationCategory = "Donation",
 )
-class DonationServiceDTO {
+class SampleServiceSampleDTO {
+
 
     @Serializable
     data class GetDonationRequestBody(
@@ -19,7 +20,7 @@ class DonationServiceDTO {
     )
 
     @Serializable
-    data class  DonationResponseModel(
+    data class DonationResponseModel(
         @SerialName("ReferrerTypeList")
         val referrerTypeList: List<ReferrerType>?
     )
