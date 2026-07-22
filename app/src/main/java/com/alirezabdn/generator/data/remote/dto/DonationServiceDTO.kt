@@ -1,4 +1,4 @@
-package com.alirezabdn.generator.data
+package com.alirezabdn.generator.data.remote.dto
 
 import android.annotation.SuppressLint
 import com.alirezabdn.generator.AyanAPI
@@ -7,22 +7,21 @@ import kotlinx.serialization.Serializable
 
 @SuppressLint("UnsafeOptInUsageError")
 @AyanAPI(
-    endpoint = "DonationServiceGerReferrerTypeList?test=true",
-    methodImplName = "getSampleDonationReferrerTypes",
+    endpoint = "DonationServiceGerReferrerTypeList",
+    methodImplName = "getDonationReferrerTypes",
     separationCategory = "Donation",
 )
-class SampleServiceSampleDTO {
-
+class DonationServiceDTO {
 
     @Serializable
     data class GetDonationRequestBody(
-        val id: String
+        val id: String,
     )
 
     @Serializable
     data class DonationResponseModel(
         @SerialName("ReferrerTypeList")
-        val referrerTypeList: List<ReferrerType>?
+        val referrerTypeList: List<ReferrerType>?,
     )
 
     @Serializable
@@ -30,7 +29,6 @@ class SampleServiceSampleDTO {
         @SerialName("Name")
         val name: String,
         @SerialName("ShowName")
-        val showName: String
-
+        val showName: String,
     )
 }

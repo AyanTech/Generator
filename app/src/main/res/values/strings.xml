@@ -1,4 +1,9 @@
 <resources>
     <string name="app_name">Generator</string>
+    <string name="donation_idle">Tap fetch to load donation referrer types</string>
     <string name="loading">Loading…</string>
+    <string name="fetch_donation">Fetch</string>
+    <string name="donation_empty">No donation referrer types found</string>
+    <string name="donation_loaded">Loaded %1$d referrer types:\n%2$s</string>
+    <string name="donation_error">Unable to load data: %1$s</string>
 </resources>

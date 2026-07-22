@@ -5,19 +5,19 @@
     android:layout_height="match_parent"
     android:gravity="center"
     android:orientation="vertical"
-    tools:context=".MainActivity">
+    tools:context=".presentation.MainActivity">
 
     <TextView
         android:id="@+id/txt_response"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:padding="16dp"
-        android:text="Reach me!" />
+        android:text="@string/donation_idle" />
 
     <Button
         android:id="@+id/btn_fetch"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="fetch" />
+        android:text="@string/fetch_donation" />
 
 </LinearLayout>

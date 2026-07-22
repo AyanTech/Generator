@@ -78,14 +78,16 @@ The annotation values control generation:
 - `methodImplName` is used for the generated data source and repository method.
 - `separationCategory` groups related APIs and provides the generated type prefix.
 
-For the `Profile` category, Generator creates these four types:
+For the `Profile` category, Generator creates these production and test-support types:
 
 - `ProfileRemoteDataSource`
 - `ProfileRemoteDataSourceImpl`
+- `ProfileRemoteDataSourceMock`
 - `ProfileRepository`
 - `ProfileRepositoryImpl`
+- `ProfileRepositoryMock`
 
-All APIs with `separationCategory = "Profile"` contribute methods to those same four types:
+All APIs with `separationCategory = "Profile"` contribute methods to those same six types:
 
 ```kotlin
 interface ProfileRemoteDataSource {
@@ -202,20 +204,84 @@ repository.sendEvent(SendEvent.SendEventRequestBody(name = "opened"))
 
 If neither model is present, Generator uses `Unit` for both the request and response.
 
+## Unit-test mocks and mock data
+
+Generator creates framework-free mocks in
+`ir.ayantech.networking.datasource.mock` and
+`ir.ayantech.networking.repository.mock`. Every generated API method has:
+
+- A mutable `<methodName>Result` flow, initialized with `emptyFlow()`.
+- A read-only-from-tests `<methodName>CallCount` invocation counter.
+- A captured `last<MethodName>RequestBody` when the API has a request model.
+- A captured `last<MethodName>BaseUrl`.
+
+This lets tests supply mock responses and verify repository delegation without a
+mocking framework:
+
+```kotlin
+@Test
+fun `getProfile delegates its arguments`() = runTest {
+    val request = GetProfile.GetProfileRequestBody(userId = "123")
+    val expectedResult = flowOf(mockApiResult)
+    val remoteDataSource = ProfileRemoteDataSourceMock().apply {
+        getProfileResult = expectedResult
+    }
+    val repository = ProfileRepositoryImpl(remoteDataSource)
+
+    val actualResult = repository.getProfile(request, baseUrl = "https://example.test")
+
+    assertSame(expectedResult, actualResult)
+    assertEquals(1, remoteDataSource.getProfileCallCount)
+    assertEquals(request, remoteDataSource.lastGetProfileRequestBody)
+    assertEquals("https://example.test", remoteDataSource.lastGetProfileBaseUrl)
+}
+```
+
+Use the generated repository mock in the same way when unit-testing consumers
+of a repository.
+
 ## Naming rules
 
 - The annotated declaration must be a class.
 - `methodImplName` must be a valid Kotlin function name and should be unique within its category.
 - The first character of `separationCategory` is capitalized and used as the type prefix.
 - Every distinct category generates `<Category>RemoteDataSource`,
-  `<Category>RemoteDataSourceImpl`, `<Category>Repository`, and
-  `<Category>RepositoryImpl`.
+  `<Category>RemoteDataSourceImpl`, `<Category>RemoteDataSourceMock`,
+  `<Category>Repository`, `<Category>RepositoryImpl`, and
+  `<Category>RepositoryMock`.
 - The request model is the first nested class whose name ends with `RequestBody`.
 - The response model is the first nested class whose name ends with `ResponseModel`.
 - Data source interfaces and implementations are written to
   `ir.ayantech.networking.datasource` and `ir.ayantech.networking.datasource.impl`.
+- Data source mocks are written to `ir.ayantech.networking.datasource.mock`.
 - Repository interfaces and implementations are written to
   `ir.ayantech.networking.repository` and `ir.ayantech.networking.repository.impl`.
+- Repository mocks are written to `ir.ayantech.networking.repository.mock`.
+
+## Sample app architecture
+
+The `app` module demonstrates Clean Architecture with MVVM and Koin while using
+the generated networking layer:
+
+```text
+MainActivity
+    → DonationViewModel
+    → GetDonationReferrerTypesUseCase
+    → domain.repository.DonationRepository
+    → data.repository.DonationRepositoryImpl
+    → generated DonationRepositoryImpl
+    → generated DonationRemoteDataSourceImpl
+    → AyanApi
+```
+
+- `data` owns annotated DTOs, generated-network adaptation, and domain mapping.
+- `domain` owns models, the repository contract, and use cases without Android
+  or Ayan Networking dependencies.
+- `presentation` owns immutable UI state, the ViewModel, and Activity rendering.
+- `di` binds the generated data source and repository into the domain graph.
+
+`GeneratorApplication` starts Koin, and `MainActivity` obtains
+`DonationViewModel` through Koin's lifecycle-aware ViewModel delegate.
 
 ## Build and test
 
@@ -223,6 +289,12 @@ Run the processor tests with:
 
 ```shell
 ./gradlew :generator:test
+```
+
+Run the sample app unit tests with:
+
+```shell
+./gradlew :app:testDebugUnitTest
 ```
 
 Build the complete project with:

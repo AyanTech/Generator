@@ -116,6 +116,55 @@ class ProcessorTest {
             repositoryImplementation(compilation, "Utility"),
             "= remoteDataSource.getNoInput(baseUrl = baseUrl)",
         )
+        assertFalse(
+            remoteDataSourceMock(compilation, "Utility")
+                .contains("lastGetNoInputRequestBody"),
+        )
+    }
+
+    @Test
+    fun `generates configurable unit test mocks for data sources and repositories`() {
+        val compilation = compileProject(
+            """
+            package test
+
+            import com.alirezabdn.generator.AyanAPI
+
+            @AyanAPI(
+                endpoint = "GetProfile",
+                methodImplName = "getProfile",
+                separationCategory = "Profile",
+            )
+            class GetProfile {
+                data class GetProfileRequestBody(val userId: String)
+                data class GetProfileResponseModel(val displayName: String)
+            }
+            """.trimIndent()
+        )
+
+        val remoteDataSourceMock = remoteDataSourceMock(compilation, "Profile")
+        val repositoryMock = repositoryMock(compilation, "Profile")
+
+        listOf(remoteDataSourceMock, repositoryMock).forEach { mock ->
+            assertContains(mock, "var getProfileResult:")
+            assertContains(mock, "emptyFlow()")
+            assertContains(mock, "var getProfileCallCount: Int = 0")
+            assertContains(mock, "private set")
+            assertContains(
+                mock,
+                "var lastGetProfileRequestBody: GetProfile.GetProfileRequestBody? = null",
+            )
+            assertContains(mock, "var lastGetProfileBaseUrl: String? = null")
+            assertContains(mock, "getProfileCallCount++")
+            assertContains(mock, "lastGetProfileRequestBody = requestBody")
+            assertContains(mock, "lastGetProfileBaseUrl = baseUrl")
+            assertContains(mock, "return getProfileResult")
+        }
+        assertContains(
+            remoteDataSourceMock,
+            "class ProfileRemoteDataSourceMock : ProfileRemoteDataSource",
+        )
+        assertContains(repositoryMock, "class ProfileRepositoryMock : ProfileRepository")
     }
 
     @Test
@@ -216,6 +265,22 @@ class ProcessorTest {
             listOf("PaymentRepositoryImpl.kt", "ProfileRepositoryImpl.kt", "StatusRepositoryImpl.kt"),
             File(repositoryDirectory, "impl").kotlinFileNames(),
         )
+        assertEquals(
+            listOf(
+                "PaymentRemoteDataSourceMock.kt",
+                "ProfileRemoteDataSourceMock.kt",
+                "StatusRemoteDataSourceMock.kt",
+            ),
+            File(dataSourceDirectory, "mock").kotlinFileNames(),
+        )
+        assertEquals(
+            listOf(
+                "PaymentRepositoryMock.kt",
+                "ProfileRepositoryMock.kt",
+                "StatusRepositoryMock.kt",
+            ),
+            File(repositoryDirectory, "mock").kotlinFileNames(),
+        )
         assertContains(profileDataSource, "public interface ProfileRemoteDataSource")
         assertContains(profileDataSource, "public suspend fun getProfile(")
         assertContains(profileDataSource, "public suspend fun updateProfile(")
@@ -262,6 +327,24 @@ class ProcessorTest {
         File(
             compilation.kspSourcesDir,
             "kotlin/ir/ayantech/networking/repository/impl/${category}RepositoryImpl.kt",
+        ).readText()
+
+    private fun remoteDataSourceMock(
+        compilation: KotlinCompilation,
+        category: String,
+    ): String =
+        File(
+            compilation.kspSourcesDir,
+            "kotlin/ir/ayantech/networking/datasource/mock/${category}RemoteDataSourceMock.kt",
+        ).readText()
+
+    private fun repositoryMock(
+        compilation: KotlinCompilation,
+        category: String,
+    ): String =
+        File(
+            compilation.kspSourcesDir,
+            "kotlin/ir/ayantech/networking/repository/mock/${category}RepositoryMock.kt",
         ).readText()
 
     private fun File.kotlinFileNames(): List<String> =
@@ -328,6 +411,8 @@ class ProcessorTest {
             package kotlinx.coroutines.flow
 
             interface Flow<T>
+
+            fun <T> emptyFlow(): Flow<T> = error("stub")
             """.trimIndent()
     }
 }
