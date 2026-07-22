@@ -176,6 +176,7 @@ private class Processor(
         abstract: Boolean = false,
     ): FunSpec =
         FunSpec.builder(data.methodName)
+            .addModifiers(KModifier.SUSPEND)
             .apply { if (abstract) addModifiers(KModifier.ABSTRACT) }
             .apply { if (!abstract) addModifiers(KModifier.OVERRIDE) }
             .apply { data.requestBodyType?.let { addParameter("requestBody", it) } }
@@ -206,6 +207,7 @@ private class Processor(
         abstract: Boolean = false,
     ): FunSpec =
         FunSpec.builder(data.methodName)
+            .addModifiers(KModifier.SUSPEND)
             .apply { if (abstract) addModifiers(KModifier.ABSTRACT) }
             .apply { if (!abstract) addModifiers(KModifier.OVERRIDE) }
             .apply { data.requestBodyType?.let { addParameter("requestBody", it) } }

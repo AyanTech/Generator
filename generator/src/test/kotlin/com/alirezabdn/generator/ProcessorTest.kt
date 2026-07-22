@@ -48,8 +48,8 @@ class ProcessorTest {
         val implementation = remoteDataSourceImplementation(compilation, "Profile")
         val repositoryImplementation = repositoryImplementation(compilation, "Profile")
 
-        assertContains(implementation, "override fun getProfile(")
-        assertContains(implementation, "override fun updateProfile(")
+        assertContains(implementation, "override suspend fun getProfile(")
+        assertContains(implementation, "override suspend fun updateProfile(")
         assertContains(implementation, "requestBody: GetProfile.GetProfileRequestBody")
         assertContains(
             implementation,
@@ -217,8 +217,8 @@ class ProcessorTest {
             File(repositoryDirectory, "impl").kotlinFileNames(),
         )
         assertContains(profileDataSource, "public interface ProfileRemoteDataSource")
-        assertContains(profileDataSource, "public fun getProfile(")
-        assertContains(profileDataSource, "public fun updateProfile(")
+        assertContains(profileDataSource, "public suspend fun getProfile(")
+        assertContains(profileDataSource, "public suspend fun updateProfile(")
         assertContains(profileDataSource, "baseUrl: String? = null")
         assertContains(
             profileDataSource,
@@ -226,14 +226,16 @@ class ProcessorTest {
         )
         assertContains(profileDataSourceImpl, "public class ProfileRemoteDataSourceImpl(")
         assertContains(profileDataSourceImpl, ": ProfileRemoteDataSource")
-        assertContains(profileDataSourceImpl, "override fun getProfile(")
-        assertContains(profileDataSourceImpl, "override fun updateProfile(")
+        assertContains(profileDataSourceImpl, "override suspend fun getProfile(")
+        assertContains(profileDataSourceImpl, "override suspend fun updateProfile(")
         assertContains(profileRepository, "public interface ProfileRepository")
-        assertContains(profileRepository, "public fun getProfile(")
-        assertContains(profileRepository, "public fun updateProfile(")
+        assertContains(profileRepository, "public suspend fun getProfile(")
+        assertContains(profileRepository, "public suspend fun updateProfile(")
         assertContains(profileRepository, "baseUrl: String? = null")
         assertContains(profileRepositoryImpl, "public class ProfileRepositoryImpl(")
         assertContains(profileRepositoryImpl, ": ProfileRepository")
+        assertContains(profileRepositoryImpl, "override suspend fun getProfile(")
+        assertContains(profileRepositoryImpl, "override suspend fun updateProfile(")
         assertContains(
             profileRepositoryImpl,
             "= remoteDataSource.getProfile(requestBody = requestBody, baseUrl = baseUrl)",
