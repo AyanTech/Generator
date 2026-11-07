@@ -2,11 +2,10 @@ package com.alirezabdn.generator.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.alirezabdn.generator.domain.model.ReferrerType
 import com.alirezabdn.generator.domain.usecase.GetDonationReferrerTypesUseCaseImpl
-import ir.ayantech.networking.v2.api.AyanAPIResult
-import ir.ayantech.networking.v2.model.ApiCallStatus
+import ir.ayantech.networking.v2.helpers.Failure
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,27 +25,16 @@ class DonationViewModel(
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
             mutableUiState.value = DonationUiState.Loading
-            getDonationReferrerTypes(donationId).collect { result ->
-                mutableUiState.value = result.toUiState()
-            }
+            val result = getDonationReferrerTypes(donationId)
+            mutableUiState.value = result.fold(
+                onSuccess = { DonationUiState.Content(it) },
+                onFailure = { failure ->
+                    val message = (failure as? Failure)?.failureMessage ?: failure.message.orEmpty()
+                    DonationUiState.Error(message)
+                },
+            )
         }
     }
-
-    private fun AyanAPIResult<List<ReferrerType>, ApiCallStatus, Exception>.toUiState(): DonationUiState =
-        when (this) {
-            is AyanAPIResult.Success -> DonationUiState.Content(this.value)
-            is AyanAPIResult.Error -> {
-                DonationUiState.Error(ayanFailure.message ?: "")
-            }
-
-            is AyanAPIResult.ChangeState -> {
-                if (this.state == ApiCallStatus.LOADING) {
-                    DonationUiState.Loading
-                } else {
-                    DonationUiState.Idle
-                }
-            }
-        }
 
     private companion object {
         const val DEFAULT_DONATION_ID = "abc"

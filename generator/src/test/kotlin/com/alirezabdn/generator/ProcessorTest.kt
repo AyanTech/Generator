@@ -53,7 +53,7 @@ class ProcessorTest {
         assertContains(implementation, "requestBody: GetProfile.GetProfileRequestBody")
         assertContains(
             implementation,
-            "Flow<AyanAPIResult<GetProfile.GetProfileResponseModel, ApiCallStatus, Exception>>",
+            "Result<GetProfile.GetProfileResponseModel>",
         )
         assertContains(
             implementation,
@@ -106,7 +106,7 @@ class ProcessorTest {
         )
         assertContains(
             remoteDataSourceImplementation(compilation, "Utility"),
-            "Flow<AyanAPIResult<Unit, ApiCallStatus, Exception>>",
+            "Result<Unit>",
         )
         assertContains(
             remoteDataSourceImplementation(compilation, "Utility"),
@@ -147,7 +147,9 @@ class ProcessorTest {
 
         listOf(remoteDataSourceMock, repositoryMock).forEach { mock ->
             assertContains(mock, "var getProfileResult:")
-            assertContains(mock, "emptyFlow()")
+            assertContains(mock, "Result<GetProfile.GetProfileResponseModel>")
+            assertContains(mock, "Result.failure(")
+            assertContains(mock, "No mock result configured for getProfile")
             assertContains(mock, "var getProfileCallCount: Int = 0")
             assertContains(mock, "private set")
             assertContains(
@@ -287,7 +289,7 @@ class ProcessorTest {
         assertContains(profileDataSource, "baseUrl: String? = null")
         assertContains(
             profileDataSource,
-            "Flow<AyanAPIResult<GetProfile.GetProfileResponseModel, ApiCallStatus, Exception>>",
+            "Result<GetProfile.GetProfileResponseModel>",
         )
         assertContains(profileDataSourceImpl, "public class ProfileRemoteDataSourceImpl(")
         assertContains(profileDataSourceImpl, ": ProfileRemoteDataSource")
@@ -359,12 +361,7 @@ class ProcessorTest {
             useKsp2()
             sources = apiSources.mapIndexed { index, source ->
                 SourceFile.kotlin("TestApi$index.kt", source)
-            } + listOf(
-                SourceFile.kotlin("AyanApiStub.kt", AYAN_API_STUB),
-                SourceFile.kotlin("AyanApiResultStub.kt", AYAN_API_RESULT_STUB),
-                SourceFile.kotlin("ApiCallStatusStub.kt", API_CALL_STATUS_STUB),
-                SourceFile.kotlin("FlowStub.kt", FLOW_STUB),
-            )
+            } + SourceFile.kotlin("AyanApiStub.kt", AYAN_API_STUB)
             symbolProcessorProviders.add(ProcessorProvider())
             inheritClassPath = true
         }
@@ -379,40 +376,13 @@ class ProcessorTest {
             """
             package ir.ayantech.networking.v2
 
-            import ir.ayantech.networking.v2.api.AyanAPIResult
-            import ir.ayantech.networking.v2.model.ApiCallStatus
-            import kotlinx.coroutines.flow.Flow
-
             class AyanApi {
-                inline fun <reified Body, reified Response> post(
+                suspend inline fun <reified Body, reified Response> post(
                     body: Body,
                     endPoint: String,
                     baseUrl: String? = null,
-                ): Flow<AyanAPIResult<Response, ApiCallStatus, Exception>> = error("stub")
+                ): Result<Response> = error("stub")
             }
-            """.trimIndent()
-
-        val AYAN_API_RESULT_STUB =
-            """
-            package ir.ayantech.networking.v2.api
-
-            class AyanAPIResult<T, J, K>
-            """.trimIndent()
-
-        val API_CALL_STATUS_STUB =
-            """
-            package ir.ayantech.networking.v2.model
-
-            enum class ApiCallStatus { IDLE }
-            """.trimIndent()
-
-        val FLOW_STUB =
-            """
-            package kotlinx.coroutines.flow
-
-            interface Flow<T>
-
-            fun <T> emptyFlow(): Flow<T> = error("stub")
             """.trimIndent()
     }
 }

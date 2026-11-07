@@ -14,7 +14,7 @@ import com.squareup.kotlinpoet.ksp.writeTo
 /**
  * Generates dependency-free mocks for unit tests that consume data sources or repositories.
  *
- * Each generated method exposes a configurable result flow, invocation count, and captured
+ * Each generated method exposes a configurable result, invocation count, and captured
  * arguments.
  */
 internal class MockGenerator(
@@ -78,7 +78,12 @@ internal class MockGenerator(
     private fun createResultProperty(data: ProcessorDataNeed): PropertySpec =
         PropertySpec.builder(data.mockResultPropertyName, data.resultType)
             .mutable()
-            .initializer("%M()", GeneratorTypes.emptyFlow)
+            .initializer(
+                "%T.failure(%T(%S))",
+                GeneratorTypes.result,
+                IllegalStateException::class.asClassName(),
+                "No mock result configured for ${data.methodName}",
+            )
             .build()
 
     private fun createCallCountProperty(data: ProcessorDataNeed): PropertySpec =
