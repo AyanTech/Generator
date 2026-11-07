@@ -1,7 +1,6 @@
 package com.alirezabdn.generator
 
 import com.squareup.kotlinpoet.ClassName
-import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.asClassName
 
 /** Package names used by generated networking sources. */
@@ -17,9 +16,6 @@ internal object GeneratorPackages {
 /** External and Kotlin types referenced by generated source files. */
 internal object GeneratorTypes {
     val ayanApi = ClassName("ir.ayantech.networking.v2", "AyanApi")
-    val ayanApiResult = ClassName("ir.ayantech.networking.v2.api", "AyanAPIResult")
-    val apiCallStatus = ClassName("ir.ayantech.networking.v2.model", "ApiCallStatus")
-    val flow = ClassName("kotlinx.coroutines.flow", "Flow")
-    val emptyFlow = MemberName("kotlinx.coroutines.flow", "emptyFlow")
+    val result = ClassName("kotlin", "Result")
     val string = String::class.asClassName()
 }

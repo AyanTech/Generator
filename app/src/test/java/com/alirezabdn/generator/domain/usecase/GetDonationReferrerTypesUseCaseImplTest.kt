@@ -6,14 +6,10 @@ import ir.ayantech.networking.ayanModel.FailureRepository
 import ir.ayantech.networking.ayanModel.FailureType
 import ir.ayantech.networking.ayanModel.Language
 import ir.ayantech.networking.repository.mock.DonationRepositoryMock
-import ir.ayantech.networking.v2.api.AyanAPIResult
 import ir.ayantech.networking.v2.helpers.Failure
-import ir.ayantech.networking.v2.model.ApiCallStatus
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
+import org.junit.Assert.assertSame
 import org.junit.Test
 
 class GetDonationReferrerTypesUseCaseImplTest {
@@ -22,48 +18,40 @@ class GetDonationReferrerTypesUseCaseImplTest {
 
     @Test
     fun `invoke passes the donation id to repository and maps a successful response`() = runTest {
-        repository.getDonationReferrerTypesResult = flowOf(
-            AyanAPIResult.success(
-                DonationServiceDTO.DonationResponseModel(
-                    referrerTypeList = listOf(
-                        DonationServiceDTO.ReferrerType(
-                            name = "campaign",
-                            showName = "Campaign",
-                        ),
+        repository.getDonationReferrerTypesResult = Result.success(
+            DonationServiceDTO.DonationResponseModel(
+                referrerTypeList = listOf(
+                    DonationServiceDTO.ReferrerType(
+                        name = "campaign",
+                        showName = "Campaign",
                     ),
                 ),
             ),
         )
 
-        val emissions = useCase("donation-42").toList()
+        val result = useCase("donation-42")
 
         assertEquals(1, repository.getDonationReferrerTypesCallCount)
         assertEquals("donation-42", repository.lastGetDonationReferrerTypesRequestBody?.id)
         assertEquals(
             listOf(ReferrerType(name = "campaign", displayName = "Campaign")),
-            (emissions.single() as AyanAPIResult.Success).value,
+            result.getOrThrow(),
         )
     }
 
     @Test
     fun `invoke converts a response without a list to an error`() = runTest {
-        repository.getDonationReferrerTypesResult = flowOf(
-            AyanAPIResult.success(
-                DonationServiceDTO.DonationResponseModel(referrerTypeList = null),
-            ),
+        repository.getDonationReferrerTypesResult = Result.success(
+            DonationServiceDTO.DonationResponseModel(referrerTypeList = null),
         )
 
-        val result = useCase("donation-42").toList().single()
+        val result = useCase("donation-42")
 
-        assertTrue(result is AyanAPIResult.Error)
-        assertEquals(
-            "Response is empty, try another time...",
-            (result as AyanAPIResult.Error).ayanFailure.message,
-        )
+        assertEquals("Response is empty, try another time...", result.exceptionOrNull()?.message)
     }
 
     @Test
-    fun `invoke exposes the networking failure message`() = runTest {
+    fun `invoke preserves the networking failure`() = runTest {
         val failure = Failure(
             failureRepository = FailureRepository.REMOTE,
             failureType = FailureType.UNKNOWN,
@@ -72,34 +60,20 @@ class GetDonationReferrerTypesUseCaseImplTest {
             failureStatus = null,
             failureMessage = "Service unavailable",
         )
-        repository.getDonationReferrerTypesResult = flowOf(
-            AyanAPIResult.error<DonationServiceDTO.DonationResponseModel>(failure),
-        )
+        repository.getDonationReferrerTypesResult = Result.failure(failure)
 
-        val result = useCase("donation-42").toList().single()
+        val result = useCase("donation-42")
 
-        assertEquals(
-            "Service unavailable",
-            (result as AyanAPIResult.Error).ayanFailure.message,
-        )
+        assertSame(failure, result.exceptionOrNull())
     }
 
     @Test
-    fun `invoke forwards repository state changes`() = runTest {
-        repository.getDonationReferrerTypesResult = flowOf(
-            AyanAPIResult.changeState<DonationServiceDTO.DonationResponseModel>(
-                ApiCallStatus.LOADING,
-            ),
-            AyanAPIResult.changeState<DonationServiceDTO.DonationResponseModel>(
-                ApiCallStatus.SUCCESSFUL,
-            ),
-        )
-
-        val results = useCase("donation-42").toList()
+    fun `invoke reports an unconfigured repository mock`() = runTest {
+        val result = useCase("donation-42")
 
         assertEquals(
-            listOf(ApiCallStatus.LOADING, ApiCallStatus.SUCCESSFUL),
-            results.map { (it as AyanAPIResult.ChangeState).state },
+            "No mock result configured for getDonationReferrerTypes",
+            result.exceptionOrNull()?.message,
         )
     }
 }

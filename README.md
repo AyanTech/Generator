@@ -10,7 +10,7 @@ Describe APIs as classes annotated with `@AyanAPI` and add nested request and re
 
 - Java 17
 - Kotlin with KSP
-- Ayan Networking v2
+- Ayan Networking 2.0.7 with Kotlin `Result` support
 - Kotlin coroutines
 
 ## Installation
@@ -40,7 +40,7 @@ dependencies {
     implementation("com.github.AyanTech:Generator:<Generator-version>")
     ksp("com.github.AyanTech:Generator:<Generator-version>")
 
-    implementation("com.github.AyanTech:Networking:<networking-version>")
+    implementation("com.github.AyanTech:Networking:2.0.7")
 }
 ```
 
@@ -87,20 +87,20 @@ For the `Profile` category, Generator creates these production and test-support 
 - `ProfileRepositoryImpl`
 - `ProfileRepositoryMock`
 
-All APIs with `separationCategory = "Profile"` contribute methods to those same six types:
+All APIs with `separationCategory = "Profile"` contribute suspend methods returning Kotlin `Result` to those same six types.
 
 ```kotlin
 interface ProfileRemoteDataSource {
-    fun getProfile(
+    suspend fun getProfile(
         requestBody: GetProfile.GetProfileRequestBody,
         baseUrl: String? = null,
-    ): Flow<AyanAPIResult<GetProfile.GetProfileResponseModel, ApiCallStatus, Exception>>
+    ): Result<GetProfile.GetProfileResponseModel>
 }
 
 class ProfileRemoteDataSourceImpl(
     private val ayanApi: AyanApi,
 ) : ProfileRemoteDataSource {
-    override fun getProfile(
+    override suspend fun getProfile(
         requestBody: GetProfile.GetProfileRequestBody,
         baseUrl: String?,
     ) =
@@ -112,16 +112,16 @@ class ProfileRemoteDataSourceImpl(
 }
 
 interface ProfileRepository {
-    fun getProfile(
+    suspend fun getProfile(
         requestBody: GetProfile.GetProfileRequestBody,
         baseUrl: String? = null,
-    ): Flow<AyanAPIResult<GetProfile.GetProfileResponseModel, ApiCallStatus, Exception>>
+    ): Result<GetProfile.GetProfileResponseModel>
 }
 
 class ProfileRepositoryImpl(
     private val remoteDataSource: ProfileRemoteDataSource,
 ) : ProfileRepository {
-    override fun getProfile(
+    override suspend fun getProfile(
         requestBody: GetProfile.GetProfileRequestBody,
         baseUrl: String?,
     ) = remoteDataSource.getProfile(requestBody, baseUrl)
@@ -137,31 +137,22 @@ Every generated method accepts `baseUrl: String? = null`. Omit it to use the
 
 ## Call the generated repository
 
-Construct the generated implementations or provide them through your DI framework:
+Call the generated repository from a coroutine. Each call returns one result.
 
 ```kotlin
-import ir.ayantech.networking.v2.api.onChangeState
-import ir.ayantech.networking.v2.api.onFailure
-import ir.ayantech.networking.v2.api.onSuccess
+import ir.ayantech.networking.v2.helpers.Failure
 import kotlinx.coroutines.launch
 
 lifecycleScope.launch {
     val remoteDataSource = ProfileRemoteDataSourceImpl(ayanApi)
     val repository = ProfileRepositoryImpl(remoteDataSource)
-    repository.getProfile(
+    val result = repository.getProfile(
         requestBody = GetProfile.GetProfileRequestBody(userId = "123"),
-    ).collect { result ->
-        result.onSuccess { profile ->
-            println(profile.displayName)
-        }
-
-        result.onFailure { exception ->
-            println(exception.message)
-        }
-
-        result.onChangeState { state ->
-            println(state)
-        }
+    )
+    result.onSuccess { profile ->
+        println(profile.displayName)
+    }.onFailure { exception ->
+        println((exception as? Failure)?.failureMessage ?: exception.message)
     }
 }
 ```
@@ -186,7 +177,7 @@ val repository = StatusRepositoryImpl(StatusRemoteDataSourceImpl(ayanApi))
 repository.getStatus()
 ```
 
-An API with no response model returns an `AyanAPIResult` whose response type is `Unit`:
+An API with no response model has the return type `Result<Unit>`.
 
 ```kotlin
 @AyanAPI(
@@ -210,7 +201,7 @@ Generator creates framework-free mocks in
 `ir.ayantech.networking.datasource.mock` and
 `ir.ayantech.networking.repository.mock`. Every generated API method has:
 
-- A mutable `<methodName>Result` flow, initialized with `emptyFlow()`.
+- A mutable `<methodName>Result` initialized with an `IllegalStateException` inside `Result.failure`.
 - A read-only-from-tests `<methodName>CallCount` invocation counter.
 - A captured `last<MethodName>RequestBody` when the API has a request model.
 - A captured `last<MethodName>BaseUrl`.
@@ -222,7 +213,7 @@ mocking framework:
 @Test
 fun `getProfile delegates its arguments`() = runTest {
     val request = GetProfile.GetProfileRequestBody(userId = "123")
-    val expectedResult = flowOf(mockApiResult)
+    val expectedResult = Result.success(GetProfile.GetProfileResponseModel(displayName = "Ayan"))
     val remoteDataSource = ProfileRemoteDataSourceMock().apply {
         getProfileResult = expectedResult
     }
@@ -230,7 +221,7 @@ fun `getProfile delegates its arguments`() = runTest {
 
     val actualResult = repository.getProfile(request, baseUrl = "https://example.test")
 
-    assertSame(expectedResult, actualResult)
+    assertEquals(expectedResult, actualResult)
     assertEquals(1, remoteDataSource.getProfileCallCount)
     assertEquals(request, remoteDataSource.lastGetProfileRequestBody)
     assertEquals("https://example.test", remoteDataSource.lastGetProfileBaseUrl)

@@ -4,44 +4,22 @@ import com.alirezabdn.generator.data.mapper.toUIModel
 import com.alirezabdn.generator.data.remote.dto.DonationServiceDTO
 import com.alirezabdn.generator.domain.model.ReferrerType
 import ir.ayantech.networking.repository.DonationRepository
-import ir.ayantech.networking.v2.api.AyanAPIResult
-import ir.ayantech.networking.v2.api.onChangeState
-import ir.ayantech.networking.v2.api.onFailure
-import ir.ayantech.networking.v2.api.onSuccess
-import ir.ayantech.networking.v2.helpers.Failure
-import ir.ayantech.networking.v2.model.ApiCallStatus
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
-
 
 /** Retrieves donation referrer types through the domain repository boundary. */
 class GetDonationReferrerTypesUseCaseImpl(
     private val repository: DonationRepository,
 ) : GetDonationReferrerTypesUseCase {
-    override suspend fun invoke(id: String): Flow<AyanAPIResult<List<ReferrerType>, ApiCallStatus, Exception>> {
-        return flow {
-            val donationRequest = DonationServiceDTO.GetDonationRequestBody(id = id)
-            repository.getDonationReferrerTypes(donationRequest).collect { result ->
-                result.onSuccess { success ->
-                    if (success.referrerTypeList != null) {
-                        emit(AyanAPIResult.success(success.toUIModel()))
-                    } else {
-                        val fakeException = Exception("Response is empty, try another time...")
-                        emit(AyanAPIResult.error(fakeException))
-                    }
-
+    override suspend fun invoke(id: String): Result<List<ReferrerType>> {
+        val request = DonationServiceDTO.GetDonationRequestBody(id = id)
+        return repository.getDonationReferrerTypes(request).fold(
+            onSuccess = { response ->
+                if (response.referrerTypeList == null) {
+                    Result.failure(IllegalStateException("Response is empty, try another time..."))
+                } else {
+                    Result.success(response.toUIModel())
                 }
-                result.onFailure { ayanFailure ->
-                    val failureMessage = (ayanFailure as? Failure)?.failureMessage ?: ""
-                    emit(AyanAPIResult.Error(Exception(failureMessage)))
-                }
-
-                result.onChangeState { state ->
-                    emit(AyanAPIResult.ChangeState(state))
-                }
-
-            }
-        }
+            },
+            onFailure = { Result.failure(it) },
+        )
     }
-
 }

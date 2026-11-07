@@ -11,7 +11,7 @@ import com.squareup.kotlinpoet.TypeName
  * @property separationCategory category used to group APIs into generated types.
  * @property endPoint endpoint passed to `AyanApi.post`.
  * @property responseType nested response model, or `Unit` when it is absent.
- * @property resultType complete flow result returned by the generated method.
+ * @property resultType Kotlin Result returned by the generated method.
  */
 internal data class ProcessorDataNeed(
     val requestBodyType: TypeName?,

@@ -4,7 +4,6 @@ import com.google.devtools.ksp.symbol.KSAnnotation
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.UNIT
-import com.squareup.kotlinpoet.asClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 
 /** Converts an annotated KSP class into the generator's framework-independent input model. */
@@ -41,13 +40,7 @@ internal class ApiDeclarationParser {
             separationCategory = annotation.stringArgument("separationCategory"),
             endPoint = configuredEndPoint.takeIf(String::isNotEmpty) ?: apiName,
             responseType = responseType,
-            resultType = GeneratorTypes.flow.parameterizedBy(
-                GeneratorTypes.ayanApiResult.parameterizedBy(
-                    responseType,
-                    GeneratorTypes.apiCallStatus,
-                    Exception::class.asClassName(),
-                )
-            ),
+            resultType = GeneratorTypes.result.parameterizedBy(responseType),
         )
     }
 
